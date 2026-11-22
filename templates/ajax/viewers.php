@@ -1,8 +1,8 @@
 <ul>
 <?php foreach( $viewers as $viewer): 
-    $time = date("jS M Y h:i A", $viewer['viewed_on']); 
-    $location = $viewer['location'];
-    $profile_id = absint($viewer['viewer']);
+    $time = wp_date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), isset( $viewer['viewed_on'] ) ? absint( $viewer['viewed_on'] ) : time() ); 
+    $location = isset( $viewer['location'] ) ? $viewer['location'] : ''; 
+    $profile_id = isset( $viewer['viewer'] ) ? absint( $viewer['viewer'] ) : 0;
 
     if( $profile_id ){
         um_fetch_user($profile_id);
@@ -11,17 +11,17 @@
         $avatar_url = um_get_user_avatar_url($profile_id, 32);
 
     }else{
-        $profile_link = 'javascript:void(0)';
-        $display_name = __('Anonymous','rofile-views-um');
+        $profile_link = '';
+        $display_name = __('Anonymous','profile-views-um');
         $avatar_url = um_get_default_avatar_uri();
     }
 
     $new_status = '';
     $status_class = 'viewed';
-    if($viewer['status']=='new'){
+    if ( isset( $viewer['status'] ) && 'new' === $viewer['status'] ) {
         $status_class = 'new';
-        if( absint($viewer['number']) > 1 ){
-            $new_status = '<small><sub style="font-weight:100;font-size:11px;">('.esc_html( $viewer['number'] ).')</sub></small>';
+        if( absint( isset( $viewer['number'] ) ? $viewer['number'] : 0 ) > 1 ){
+            $new_status = '<small><sub style="font-weight:100;font-size:11px;">('.esc_html( isset( $viewer['number'] ) ? $viewer['number'] : 0 ).')</sub></small>';
         }
         $new_status .= '<sup>&bull;</sup>';
     }

@@ -1,10 +1,10 @@
 === Profile Views for Ultimate Member ===
 Contributors: simplewpplugins
 Tags: ultimate member, profile view, view count, view count notification.
-Requires at least: 5.0
-Tested up to: 6.0.1
-Requires PHP: 7.0
-Stable tag: 1.2
+Requires at least: 6.2
+Tested up to: 6.9
+Requires PHP: 7.4
+Stable tag: 1.3.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/old-licenses/gpl-2.0.html
 
@@ -14,7 +14,7 @@ Allows users to see their profile viewers
 
 *Profile Views for Ultimate member* plugin requires [Ultimate Member](https://wordpress.org/plugins/ultimate-member) Plugin to work.
 
-This plugin uses api from [ip-api.com](https://ip-api.com/)to track visitor's approximate location. By using this plugin you accept their [Terms and Policies](https://ip-api.com/docs/legal).
+Visitor IP geolocation is disabled by default in version 1.3.0. Developers may provide a location using the `pvum_viewer_location` filter. Existing stored locations are preserved.
 
 This plugin adds profile view notification to user's profile and displays viewers details including name, location and time.
 
@@ -73,3 +73,12 @@ add_filter( 'pvum_track_anonymous_users',function( $v ){
 add_filter( 'pvum_count_refresh_interval',function( $interval ){
 	return 15000;
 } );`
+== Changelog ==
+
+= 1.3.1 =
+* Fix profile view count and viewer list AJAX responses.
+* Restrict viewer data and counts to the profile owner and verify AJAX nonces.
+* Store hashed identifiers for new anonymous visitors instead of raw IP addresses.
+* Preserve existing viewer history and support legacy records.
+* Harden malformed history handling and viewer rendering.
+* Target Ultimate Member 2.14.2; runtime verification still required.

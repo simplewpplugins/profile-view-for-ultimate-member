@@ -8,59 +8,50 @@ if( ! class_exists('pvum\Helper')){
 	class Helper {
 
 
+        /** Only trust the address provided by the web server, not spoofable forwarding headers. */
         function get_ip_address() {
-
-            $ipaddress = '';
-            
-            if (getenv('HTTP_CLIENT_IP'))
-                $ipaddress = getenv('HTTP_CLIENT_IP');
-            else if(getenv('HTTP_X_FORWARDED_FOR'))
-                $ipaddress = getenv('HTTP_X_FORWARDED_FOR');
-            else if(getenv('HTTP_X_FORWARDED'))
-                $ipaddress = getenv('HTTP_X_FORWARDED');
-            else if(getenv('HTTP_FORWARDED_FOR'))
-                $ipaddress = getenv('HTTP_FORWARDED_FOR');
-            else if(getenv('HTTP_FORWARDED'))
-               $ipaddress = getenv('HTTP_FORWARDED');
-            else if(getenv('REMOTE_ADDR'))
-                $ipaddress = getenv('REMOTE_ADDR');
-            else
-                $ipaddress = 'UNKNOWN';
-
-            return $ipaddress;
-            
+            $ip = isset( $_SERVER['REMOTE_ADDR'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) ) : '';
+            return filter_var( $ip, FILTER_VALIDATE_IP ) ? $ip : '';
         }
 
-
-        function ip_to_location( $ip_address ){
-        
-            $location = __( 'Unknown place','profile-views-um' );
-            $data = wp_remote_get( 'http://ip-api.com/php/'.$ip_address );
-            if( ! is_wp_error( $data  ) && is_array( $data ) && isset( $data['response']['code'] ) && $data['response']['code'] == 200 ){
-                $raw_data = $data['body'];
-                $raw_data_arr = json_decode( $raw_data );
-                if( $raw_data_arr == null ){
-                    $raw_data_arr = unserialize( $raw_data );
+        /** Role option is stored by Ultimate Member as user metadata. */
+        function profile_views_enabled( $profile_id ) {
+            $profile_id = absint( $profile_id );
+            if ( ! $profile_id ) {
+                return false;
+            }
+            // Fetch the owner's role setting without changing Ultimate Member's active user.
+            $user = get_userdata( $profile_id );
+            if ( ! $user ) {
+                return false;
+            }
+            $role = function_exists( 'um_user' ) ? get_user_meta( $profile_id, 'role', true ) : '';
+            $role = $role ? $role : ( ! empty( $user->roles ) ? reset( $user->roles ) : '' );
+            $role_data = function_exists( 'UM' ) && method_exists( UM(), 'roles' ) ? UM()->roles()->get_role( $role ) : array();
+            $setting = null;
+            if ( is_array( $role_data ) ) {
+                if ( array_key_exists( '_um_enable_profile_views', $role_data ) ) {
+                    $setting = $role_data['_um_enable_profile_views'];
+                } elseif ( array_key_exists( 'enable_profile_views', $role_data ) ) {
+                    $setting = $role_data['enable_profile_views'];
                 }
-        
-
-        
-                if(is_array( $raw_data_arr) && isset($raw_data_arr['status']) && $raw_data_arr['status'] == 'success' ){
-        
-                    $location = '';
-                    if( isset( $raw_data_arr['city']) ){
-                        $location .= $raw_data_arr['city'].',';
-                    }
-                    if( isset($raw_data_arr['countryCode'])){
-                        $location .= $raw_data_arr['countryCode'];
-                    }
-        
-                }
-            } 
-        
-            return $location;
+            }
+            // Respect explicit off (0) and on (1) choices. Only an absent
+            // setting inherits the new-install default.
+            if ( null === $setting || '' === $setting ) {
+                return 'enabled' === get_option( 'pvum_default_profile_views', 'legacy' );
+            }
+            return (bool) $setting;
         }
 
+        /**
+         * Geolocation is disabled by default to avoid transmitting visitor IPs to
+         * a third-party service without an explicit site-owner opt-in.
+         * Developers may supply an HTTPS-backed resolver through this filter.
+         */
+        function ip_to_location( $ip_address ) {
+            return sanitize_text_field( (string) apply_filters( 'pvum_viewer_location', __( 'Unknown place', 'profile-views-um' ), $ip_address ) );
+        }
 
 
 		function count_new_views( $profile_id, $viewers = null ){
@@ -95,7 +86,12 @@ if( ! class_exists('pvum\Helper')){
 
             if( $viewer_id == 0 ){
                     // search by ip
-                    $key = array_search( $ip_address, array_column( $viewers, 'ip' ) );
+                    $hashed_ip = $ip_address ? hash_hmac( 'sha256', $ip_address, wp_salt( 'auth' ) ) : '';
+                    $key = $hashed_ip ? array_search( $hashed_ip, array_column( $viewers, 'ip' ), true ) : false;
+                    if ( false === $key && $ip_address ) {
+                        // Legacy records created before hashed guest identifiers.
+                        $key = array_search( $ip_address, array_column( $viewers, 'ip' ), true );
+                    }
                     if( $key !== false ){
                         return $key;
                     }
@@ -115,8 +111,11 @@ if( ! class_exists('pvum\Helper')){
 
         function mark_read( $profile_id,$viewers = null ){
 
-            if( ! $viewers){
-                $viewers = get_user_meta( $profile_id,'_profile_views',true );
+            if ( ! is_array( $viewers ) ) {
+                $viewers = get_user_meta( $profile_id, '_profile_views', true );
+            }
+            if ( ! is_array( $viewers ) ) {
+                return;
             }
 
             array_walk ( $viewers, function (&$key) { 

@@ -15,10 +15,10 @@
 				array(
 					'id'      => '_um_enable_profile_views',
 					'type'    => 'checkbox',
-					'default' => 0,
+					'default' => 'enabled' === get_option( 'pvum_default_profile_views', 'legacy' ) ? 1 : 0,
 					'label'   => __( 'Enable profile views feature?', 'profile-views-um' ),
 					'tooltip' => __( 'Can this role see list of profile viewers?', 'profile-views-um' ),
-					'value'   => isset( $role['_um_enable_profile_views'] ) ? $role['_um_enable_profile_views'] : 0,
+					'value'   => isset( $role['_um_enable_profile_views'] ) ? $role['_um_enable_profile_views'] : ( 'enabled' === get_option( 'pvum_default_profile_views', 'legacy' ) ? 1 : 0 ),
 				)
 			),
 		)

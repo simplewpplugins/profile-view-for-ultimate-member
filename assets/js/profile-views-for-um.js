@@ -22,7 +22,7 @@
                 panel.find('.profile-view-body').html('');
             }
             else{
-                var action_url = ajax_url+'?action=get_views&profile='+profile_id;
+                var action_url = ajax_url+'?action=get_views&nonce='+encodeURIComponent(pvum_ajax_data.nonce)+'&profile='+encodeURIComponent(profile_id);
                 var panel_body = panel.find('.profile-view-body');
                 panel_body.html('<div class="pvum-loader"><span class="lds-dual-ring"></span></div>');
                 panel.addClass('open');
@@ -61,11 +61,12 @@
 
         view_count = parseInt( view_count);
         if( ! view_count ){
+            link.removeClass('busy');
             return false;
         }
 
         var action_url = ajax_url+'?action=pvum_clear_views';
-        $.post(action_url,{ profile: profile_id },function( data ){
+        $.post(action_url,{ profile: profile_id, nonce: pvum_ajax_data.nonce },function( data ){
             link.removeClass('busy');
             link.attr('data-count',0);
             var panel = $('#profile-view-list');
@@ -78,8 +79,8 @@
         var icon = $('#profile-viewers-icon');
         if( icon.length ){
         var profile_id = icon.attr('data-profile');
-        var counter_action_url = ajax_url+'?action=get_views_count&profile='+profile_id;
-        var action_url = ajax_url+'?action=get_views&profile='+profile_id;
+        var counter_action_url = ajax_url+'?action=get_views_count&nonce='+encodeURIComponent(pvum_ajax_data.nonce)+'&profile='+encodeURIComponent(profile_id);
+        var action_url = ajax_url+'?action=get_views&nonce='+encodeURIComponent(pvum_ajax_data.nonce)+'&profile='+encodeURIComponent(profile_id);
                 $.get(counter_action_url,function(data){
 
                     //console.log('ajax count:'+data);

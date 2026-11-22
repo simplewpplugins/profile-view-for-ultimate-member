@@ -107,7 +107,7 @@ if( ! class_exists('Profile_Views_For_Ultimate_Member')){
                 $this->classes['ajax'] = new pvum\Ajax();
             }
 
-            return $this->classes['action'];
+            return $this->classes['ajax'];
         }
 
 

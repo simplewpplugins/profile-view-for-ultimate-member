@@ -22,7 +22,7 @@ if( ! class_exists('pvum\Action')){
 
 		function load_panel_template( $args ){
 
-			if( ! um_user( 'enable_profile_views' ) ){
+			if ( ! pvum()->helper()->profile_views_enabled( um_profile_id() ) ) {
 				return;
 			}
 
@@ -37,7 +37,7 @@ if( ! class_exists('pvum\Action')){
 				return;
 			}
 
-			if( ! um_user( 'enable_profile_views' ) ){
+			if ( ! pvum()->helper()->profile_views_enabled( um_profile_id() ) ) {
 				return;
 			}
 
@@ -50,18 +50,16 @@ if( ! class_exists('pvum\Action')){
 
 		function track_viewers( $profile_id ){
 
-			um_fetch_user( $profile_id );
-			
-			if( ! um_user( 'enable_profile_views' ) ){
+			if ( ! pvum()->helper()->profile_views_enabled( $profile_id ) ) {
 				return;
 			}
 
 			// check if profile views is enabled for the role
 			$viewers = get_user_meta( $profile_id,'_profile_views',true );
 
-			if( ! $viewers ){
-				$viewers = [];
-			}
+			if ( ! is_array( $viewers ) ) {
+                $viewers = array();
+            }
 
 			if( is_user_logged_in()){
 
@@ -80,6 +78,9 @@ if( ! class_exists('pvum\Action')){
 		
 				$time = time();
 				$ip = pvum()->helper()->get_ip_address();
+                if ( ! $viewer_id && ! $ip ) {
+                    return;
+                }
 				$viewer_index = pvum()->helper()->has_already_viewed( $ip, $profile_id, $viewer_id );
 		
 				if( $viewer_index !== false ){
@@ -95,7 +96,7 @@ if( ! class_exists('pvum\Action')){
 		
 					$viewers[] = [
 						'viewer' => $viewer_id,
-						'ip'	=> $ip,
+						'ip' => $viewer_id ? '' : hash_hmac( 'sha256', $ip, wp_salt( 'auth' ) ),
 						'viewed_on' => $time,
 						'location' => $location,
 						'number' => 1,
@@ -105,7 +106,11 @@ if( ! class_exists('pvum\Action')){
 				}
 				
 		
-				update_user_meta( $profile_id, '_profile_views',$viewers );
+				$max_viewers = max( 1, absint( apply_filters( 'pvum_max_viewers_per_profile', 500 ) ) );
+                if ( count( $viewers ) > $max_viewers ) {
+                    $viewers = array_slice( $viewers, -$max_viewers );
+                }
+                update_user_meta( $profile_id, '_profile_views', $viewers );
 
 			}
 
